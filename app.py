@@ -29,14 +29,14 @@ async def send_welcome(message: types.Message):
 async def get_data(message: types.Message):
     data_type = {
         '/drug': 'drug',
-        '/acti': 'ingredient',
+        '/acti': 'component',
     }
 
     command = message.get_command()
     data = message.get_args()
     if not data:
         await message.reply(f"Ожидалось, что будет введено название после комманды {message.get_command()}") 
-    url = f'http://127.0.0.1:8000/api/v1/drugs/{data_type[command]}/{data}'
+    url = f'http://127.0.0.1:8000/api/v1/drugs?{data_type[command]}={data}'
     api_response = requests.get(url)
     print(message.from_user.full_name ,message.get_args())
     print(api_response.status_code)
@@ -52,7 +52,7 @@ async def get_data(message: types.Message):
             elif drug['recipe_only'] == False:
                 drug_recipe = 'Нет'
             print(drug['id'])
-            await message.reply(f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n{drug['form_of_release']}\nПо рецепту: {drug_recipe}")
+            await message.reply(f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n\nПо рецепту: {drug_recipe}") #  {drug['form_of_release']}
             counter += 1  # Временная заглушка до улучшения квери с ценами
             if counter == 10:  # Временная заглушка до улучшения квери с ценами
                 break
