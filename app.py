@@ -1,69 +1,66 @@
 import logging
 import requests
+import filters
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.dispatcher.filters.builtin import CommandStart, CommandHelp
 from settings import API_TOKEN
+from filters.command_filter import CommandFilter
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-@dp.message_handler(commands=['start'])
+@dp.message_handler(CommandStart())
 async def send_welcome(message: types.Message):
     """
-    This handler will be called when user sends `/start` or `/help` command
+    This handler will be called when user sends `/start` command
     """
-    await message.reply("Hello!\nI'm DrugBuddy!\nuse '/help' if you want to know me better!")
+    await message.reply(f"Hello, {message.from_user.full_name}!\nI am DrugBuddy!\nuse '/help' if you want to know me better!")
 
-@dp.message_handler(commands=['help'])
+@dp.message_handler(CommandHelp())
 async def send_welcome(message: types.Message):
     """
-    This handler will be called when user sends `/start` or `/help` command
+    This handler will be called when user sends `/help` command
     """
     await message.reply("Hello!\nI'm DrugBuddy!\nuse '/drug <your_drug_name>' to get similar drugs\n or '/acti <active ingredient name>' to get drugs with the same ingredient.")
 
+@dp.message_handler(CommandFilter())
+async def get_data(message: types.Message):
+    data_type = {
+        '/drug': 'drug',
+        '/acti': 'ingredient',
+    }
 
-@dp.message_handler(commands=['drug',])
-async def get_drug(message: types.Message):
-    drug_name = message.text.replace('/drug ', '')
-    if drug_name == '/drug':
-        await message.reply("Ожидалось, что будет введено название препарата после комманды /test") 
-    url = f'http://127.0.0.1:8000/api/v1/drugs/drug/{drug_name}'
+    command = message.get_command()
+    data = message.get_args()
+    if not data:
+        await message.reply(f"Ожидалось, что будет введено название после комманды {message.get_command()}") 
+    url = f'http://127.0.0.1:8000/api/v1/drugs/{data_type[command]}/{data}'
     api_response = requests.get(url)
+    print(message.from_user.full_name ,message.get_args())
     print(api_response.status_code)
     if api_response.status_code in [200, 201]:
         drug_json = api_response.json()
-        
-        if len(drug_json)>0:
-            for drug in drug_json:
-                print(drug['active_ingredient'])
-                ingridients = ', '.join([x['name'] for x in drug['active_ingredient']])
-                await message.reply(f"Найден похожий на {drug_name} препарат: {drug['name']}\nАктивные вещества: {ingridients}")
-
-@dp.message_handler(commands=['acti',])
-async def get_active_ingredient(message: types.Message):
-    active_ingredient_name = message.text.replace('/acti ', '')
-    if active_ingredient_name == '/acti':
-        await message.reply("Ожидалось, что будет введено название действующего вещества после комманды /acti") 
-    url = f'http://127.0.0.1:8000/api/v1/drugs/ingredient/{active_ingredient_name}'
-    api_response = requests.get(url)
-    print(api_response.status_code)
-    if api_response.status_code in [200, 201]:
-        drug_json = api_response.json()
-        
-        if len(drug_json)>0:
-            for drug in drug_json:
-                print(drug['active_ingredient'])
-                ingridients = ', '.join([x['name'] for x in drug['active_ingredient']])
-                await message.reply(f"Найден препарат c действующим веществом {active_ingredient_name}: {drug['name']}\nАктивные вещества: {ingridients}")
+        counter = 0  # Временная заглушка до улучшения квери с ценами
+        for drug in drug_json:
+            print(drug['active_ingredient'])
+            ingridients = ', '.join([x['name'] for x in drug['active_ingredient']])
+            drug_recipe = 'Не известно'
+            if drug['recipe_only'] == True:
+                'Да'  
+            elif drug['recipe_only'] == False:
+                drug_recipe = 'Нет'
+            print(drug['id'])
+            await message.reply(f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n{drug['form_of_release']}\nПо рецепту: {drug_recipe}")
+            counter += 1  # Временная заглушка до улучшения квери с ценами
+            if counter == 10:  # Временная заглушка до улучшения квери с ценами
+                break
 
 
-@dp.message_handler()
-async def echo(message: types.Message):
-    # old style:
-    # await bot.send_message(message.chat.id, message.text)
-
-    await message.answer(message.text)
+async def on_startup(dp):
+    logging.warning('Bot starting!')
+    filters.setup(dp)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
