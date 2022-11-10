@@ -1,4 +1,4 @@
-import logging
+from aiologger.loggers.json import JsonLogger
 import requests
 from aiohttp import ClientSession
 import filters
@@ -7,7 +7,10 @@ from aiogram.dispatcher.filters.builtin import CommandStart, CommandHelp
 from settings import API_TOKEN
 from filters.command_filter import CommandFilter
 
-logging.basicConfig(level=logging.INFO)
+logger = JsonLogger.with_default_handlers(
+            level='DEBUG',
+            serializer_kwargs={'ensure_ascii': False},
+        )
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -26,8 +29,10 @@ async def send_help(message: types.Message):
     """
     await message.reply("Hello!\nI'm DrugBuddy!\nuse '/drug <your_drug_name>' to get similar drugs\n or '/acti <active ingredient name>' to get drugs with the same ingredient.")
 
+
 @dp.message_handler(CommandFilter())
 async def get_data(message: types.Message):
+
     data_type = {
         '/drug': 'drug',
         '/acti': 'component',
@@ -44,19 +49,19 @@ async def get_data(message: types.Message):
         async with session.get(url=url, params=params) as resp:
             api_response = await resp.json()
 
-            print(message.from_user.full_name ,message.get_args(), resp.status)
+            # print(message.from_user.full_name ,message.get_args(), resp.status)
+            await logger.info(f'{message.from_user.full_name}, request: {message.get_args()}, status: {resp.status}')
 
             if resp.status in [200, 201]:
                 counter = 0  # Временная заглушка до улучшения квери с ценами
                 for drug in api_response:
-                    print(drug['active_ingredient'])
                     ingridients = ', '.join([x['name'] for x in drug['active_ingredient']])
                     drug_recipe = 'Не известно'
                     if drug['recipe_only'] == True:
                         'Да'  
                     elif drug['recipe_only'] == False:
                         drug_recipe = 'Нет'
-                    print(drug['id'])
+
                     await message.reply(f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n\nПо рецепту: {drug_recipe}") #  {drug['form_of_release']}
                     counter += 1  # Временная заглушка до улучшения квери с ценами
                     if counter == 10:  # Временная заглушка до улучшения квери с ценами
@@ -64,7 +69,7 @@ async def get_data(message: types.Message):
 
 
 async def on_startup(dp):
-    logging.warning('Bot starting!')
+    await logger.info('Bot starting!')
     filters.setup(dp)
 
 if __name__ == '__main__':
