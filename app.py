@@ -1,19 +1,22 @@
-from aiologger.loggers.json import JsonLogger
-import requests
-from aiohttp import ClientSession
 import filters
+from aiologger.loggers.json import JsonLogger
+from aiologger.handlers.files import AsyncFileHandler
+from tempfile import NamedTemporaryFile
+from aiohttp import ClientSession
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters.builtin import CommandStart, CommandHelp
 from settings import API_TOKEN
 from filters.command_filter import CommandFilter
 
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
+temp_file = NamedTemporaryFile()
+print(temp_file.name)
+handler = AsyncFileHandler(filename=temp_file.name),
 logger = JsonLogger.with_default_handlers(
             level='DEBUG',
             serializer_kwargs={'ensure_ascii': False},
         )
-
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
 
 @dp.message_handler(CommandStart())
 async def send_welcome(message: types.Message):
