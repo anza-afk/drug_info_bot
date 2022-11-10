@@ -1,5 +1,6 @@
 import logging
 import requests
+from aiohttp import ClientSession
 import filters
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters.builtin import CommandStart, CommandHelp
@@ -19,7 +20,7 @@ async def send_welcome(message: types.Message):
     await message.reply(f"Hello, {message.from_user.full_name}!\nI am DrugBuddy!\nuse '/help' if you want to know me better!")
 
 @dp.message_handler(CommandHelp())
-async def send_welcome(message: types.Message):
+async def send_help(message: types.Message):
     """
     This handler will be called when user sends `/help` command
     """
@@ -35,27 +36,31 @@ async def get_data(message: types.Message):
     command = message.get_command()
     data = message.get_args()
     if not data:
-        await message.reply(f"Ожидалось, что будет введено название после комманды {message.get_command()}") 
-    url = f'http://127.0.0.1:8000/api/v1/drugs?{data_type[command]}={data}'
-    api_response = requests.get(url)
-    print(message.from_user.full_name ,message.get_args())
-    print(api_response.status_code)
-    if api_response.status_code in [200, 201]:
-        drug_json = api_response.json()
-        counter = 0  # Временная заглушка до улучшения квери с ценами
-        for drug in drug_json:
-            print(drug['active_ingredient'])
-            ingridients = ', '.join([x['name'] for x in drug['active_ingredient']])
-            drug_recipe = 'Не известно'
-            if drug['recipe_only'] == True:
-                'Да'  
-            elif drug['recipe_only'] == False:
-                drug_recipe = 'Нет'
-            print(drug['id'])
-            await message.reply(f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n\nПо рецепту: {drug_recipe}") #  {drug['form_of_release']}
-            counter += 1  # Временная заглушка до улучшения квери с ценами
-            if counter == 10:  # Временная заглушка до улучшения квери с ценами
-                break
+        await message.reply(f"Ожидалось, что будет введено название после комманды {message.get_command()}")
+
+    async with ClientSession() as session: 
+        url = f'http://127.0.0.1:8000/api/v1/drugs'
+        params = {data_type[command]: data}
+        async with session.get(url=url, params=params) as resp:
+            api_response = await resp.json()
+
+            print(message.from_user.full_name ,message.get_args(), resp.status)
+
+            if resp.status in [200, 201]:
+                counter = 0  # Временная заглушка до улучшения квери с ценами
+                for drug in api_response:
+                    print(drug['active_ingredient'])
+                    ingridients = ', '.join([x['name'] for x in drug['active_ingredient']])
+                    drug_recipe = 'Не известно'
+                    if drug['recipe_only'] == True:
+                        'Да'  
+                    elif drug['recipe_only'] == False:
+                        drug_recipe = 'Нет'
+                    print(drug['id'])
+                    await message.reply(f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n\nПо рецепту: {drug_recipe}") #  {drug['form_of_release']}
+                    counter += 1  # Временная заглушка до улучшения квери с ценами
+                    if counter == 10:  # Временная заглушка до улучшения квери с ценами
+                        break
 
 
 async def on_startup(dp):
