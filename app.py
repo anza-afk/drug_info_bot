@@ -7,6 +7,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters.builtin import CommandStart, CommandHelp
 from settings import API_TOKEN
 from filters.command_filter import CommandFilter
+from aiohttp.client_exceptions import ContentTypeError
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -50,26 +51,36 @@ async def get_data(message: types.Message):
         url = f'http://127.0.0.1:8000/api/v1/drugs'
         params = {data_type[command]: data}
         async with session.get(url=url, params=params) as resp:
-            api_response = await resp.json()
-
-            # print(message.from_user.full_name ,message.get_args(), resp.status)
-            await logger.info(f'{message.from_user.full_name}, request: {message.get_args()}, status: {resp.status}')
-
+            resp_info = f'{message.from_user.full_name}, request: {message.get_args()}, status: {resp.status}'
+            try:
+                api_response = await resp.json()
+                await logger.info(resp_info)
+            except ContentTypeError:
+                await logger.error(resp_info)
             if resp.status in [200, 201]:
+                res = ''
                 counter = 0  # Временная заглушка до улучшения квери с ценами
                 for drug in api_response:
+                    if any((drug['name'].replace('®', '').split()[0] in res, drug['name'].replace('®', '').split('-')[0] in res, drug['name'].replace('®', '').split('(')[0] in res)):
+                        continue
                     ingridients = ', '.join([x['name'] for x in drug['active_ingredient']])
+                    res += f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n"
+
                     drug_recipe = 'Не известно'
                     if drug['recipe_only'] == True:
-                        'Да'  
+                        'Да'
                     elif drug['recipe_only'] == False:
                         drug_recipe = 'Нет'
+                    
+                    # if drug['form_of_release']:
+                    #     res += f"Форма выпуска: {drug['form_of_release']}\n"
 
-                    await message.reply(f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n\nПо рецепту: {drug_recipe}") #  {drug['form_of_release']}
+                    res += f"По рецепту: {drug_recipe}\n\n"
+
                     counter += 1  # Временная заглушка до улучшения квери с ценами
                     if counter == 10:  # Временная заглушка до улучшения квери с ценами
                         break
-
+                await message.reply(res)
 
 async def on_startup(dp):
     await logger.info('Bot starting!')
