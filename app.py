@@ -59,7 +59,7 @@ async def get_data(message: types.Message):
                 await logger.error(resp_info)
             if resp.status in [200, 201]:
                 res = ''
-                counter = 0  # Временная заглушка до улучшения квери с ценами
+                # counter = 0  # Временная заглушка до улучшения квери с ценами
                 for drug in api_response:
                     if any((drug['name'].replace('®', '').split()[0] in res, drug['name'].replace('®', '').split('-')[0] in res, drug['name'].replace('®', '').split('(')[0] in res)):
                         continue
@@ -77,9 +77,9 @@ async def get_data(message: types.Message):
 
                     res += f"По рецепту: {drug_recipe}\n\n"
 
-                    counter += 1  # Временная заглушка до улучшения квери с ценами
-                    if counter == 10:  # Временная заглушка до улучшения квери с ценами
-                        break
+                    # counter += 1  # Временная заглушка до улучшения квери с ценами
+                    # if counter == 10:  # Временная заглушка до улучшения квери с ценами
+                    #     break
                 await message.reply(res)
 
 async def on_startup(dp):
