@@ -24,14 +24,24 @@ async def send_welcome(message: types.Message):
     """
     This handler will be called when user sends `/start` command
     """
-    await message.reply(f"Hello, {message.from_user.full_name}!\nI am DrugBuddy!\nuse '/help' if you want to know me better!")
+    await message.reply(
+        (f"Hello, {message.from_user.full_name}!\n"
+        "I am DrugBuddy!\nuse '/help'"
+        "if you want to know me better!")
+        )
 
 @dp.message_handler(CommandHelp())
 async def send_help(message: types.Message):
     """
     This handler will be called when user sends `/help` command
     """
-    await message.reply("Hello!\nI'm DrugBuddy!\nuse '/drug <your_drug_name>' to get similar drugs\n or '/acti <active ingredient name>' to get drugs with the same ingredient.")
+    await message.reply(
+        ("Hello!\nI'm DrugBuddy!\n"
+        "use '/drug <your_drug_name>'"
+        "to get similar drugs\n"
+        "or '/acti <active ingredient name>'"
+        "to get drugs with the same ingredient.")
+        )
 
 
 @dp.message_handler(CommandFilter())
@@ -45,13 +55,17 @@ async def get_data(message: types.Message):
     command = message.get_command()
     data = message.get_args()
     if not data:
-        await message.reply(f"Ожидалось, что будет введено название после комманды {message.get_command()}")
+        await message.reply(
+            f"Ожидалось, что будет введено название после комманды {command}"
+            )
 
     async with ClientSession() as session: 
-        url = f'http://127.0.0.1:8000/api/v1/drugs'
+        url = f'http://127.0.0.1:8000/api/v1/drugs' #  change url to env variable
         params = {data_type[command]: data}
         async with session.get(url=url, params=params) as resp:
-            resp_info = f'{message.from_user.full_name}, request: {message.get_args()}, status: {resp.status}'
+            resp_info = (f'{message.from_user.full_name}, '
+                'request: {data}, status: {resp.status}'
+                )
             try:
                 api_response = await resp.json()
                 await logger.info(resp_info)
@@ -61,10 +75,18 @@ async def get_data(message: types.Message):
                 res = ''
                 # counter = 0  # Временная заглушка до улучшения квери с ценами
                 for drug in api_response:
-                    if any((drug['name'].replace('®', '').split()[0] in res, drug['name'].replace('®', '').split('-')[0] in res, drug['name'].replace('®', '').split('(')[0] in res)):
+                    if any((
+                        drug['name'].replace('®', '').split()[0] in res,
+                        drug['name'].replace('®', '').split('-')[0] in res,
+                        drug['name'].replace('®', '').split('(')[0] in res
+                        )):
                         continue
                     ingridients = ', '.join([x['name'] for x in drug['active_ingredient']])
-                    res += f"Найден препарат c действующим веществом {data}: {drug['name']}\nАктивные вещества: {ingridients}\n{drug['pharmacological_class']}\n"
+                    res += ("Найден препарат c действующим веществом"
+                        f"{data}: {drug['name']}\n"
+                        f"Активные вещества: {ingridients}\n"
+                        f"{drug['pharmacological_class']}\n"
+                        )
 
                     drug_recipe = 'Не известно'
                     if drug['recipe_only'] == True:
